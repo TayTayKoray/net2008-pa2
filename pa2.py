@@ -6,6 +6,7 @@ import yaml
 
 class BadFile(Exception):
     """Raise exception if file input is wrong or missing"""
+    #add error calls in the read sections
     pass
 
 class Device():
@@ -31,6 +32,13 @@ def main():
             if dev_id and dev_id.strip() != "":
                 dev_ids.append(dev_id)
                 dev_di[dev_id] = Device(devs)
+
+    with open(policy_path, "r", enconding = "utf-8") as f:
+        policy = yaml.safe_load()
+        for devs in dev_di:
+            devs.polcheck(policy)
+
+    #add writing and outputs
             
 
 
