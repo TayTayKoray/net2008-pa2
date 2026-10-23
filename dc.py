@@ -28,6 +28,9 @@ class Device():
 
     def polcheck(self, policy):
         """Checks if policy error in class"""
+        if self.id == None:
+            return
+        
         if self.role == "switch":
             if policy["switch"] != self.os:
                 self.err.append({
@@ -45,7 +48,7 @@ class Device():
                     "required": policy["router"]
                 })
         elif self.role == "firewall":
-            if policy["firewall"] != self.id:
+            if policy["firewall"] != self.os:
                 self.err.append({
                     "device": self.id,
                     "type": "os_outdated",
@@ -68,7 +71,7 @@ class Device():
 
         downs = 0
         for infs in self.interf:
-            if self.interf[] == "down":
+            if infs["satus"] == "down":
                 downs += 1
         if downs > policy["max_down_interfaces"]:
             self.err.append({
@@ -76,12 +79,8 @@ class Device():
                 "type": "too_many_down",
                 "down": downs
             })
-
-
-    def formout(self):
-        """Formats variables and info for json writing"""
-
-        return 
+        if not self.err:
+            self.compliant = True
 
 def main():
     """Main function to run everything"""
