@@ -71,7 +71,11 @@ class Device():
 
         downs = 0
         for infs in self.interf:
+<<<<<<< Updated upstream
+            if infs["satus" == "down"]:
+=======
             if infs["satus"] == "down":
+>>>>>>> Stashed changes
                 downs += 1
         if downs > policy["max_down_interfaces"]:
             self.err.append({
