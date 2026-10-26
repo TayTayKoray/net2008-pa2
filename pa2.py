@@ -11,7 +11,75 @@ class BadFile(Exception):
 
 class Device():
     """Creates device instances for easy organization"""
-    pass
+    def __init__(self,devs):
+        """Intializes the variables for device class"""
+        self.id = devs.id
+        self.role = devs.role
+        self.os = devs.os
+        self.owner = devs.owner
+        self.intf = []
+        for intfs in devs.findall("interface"):
+            self.intf.append({
+                "name": intfs.get("name"),
+                "status": intfs.get("status")
+            })
+        self.err = []
+
+    def polcheck(self, policy):
+        """Checks if policy error in class"""
+        if self.id == None:
+            return
+        
+        if self.role == "switch":
+            if policy["switch"] != self.os:
+                self.err.append({
+                    "device": self.id,
+                    "type": "os_outdated",
+                    "found": self.os,
+                    "required": policy["switch"]
+                    })
+        elif self.role == "router":
+            if policy["router"] != self.os:
+                self.err.append({
+                    "device": self.id,
+                    "type": "os_outdated",
+                    "found": self.os,
+                    "required": policy["router"]
+                })
+        elif self.role == "firewall":
+            if policy["firewall"] != self.os:
+                self.err.append({
+                    "device": self.id,
+                    "type": "os_outdated",
+                    "found": self.os,
+                    "required": policy["firewall"]
+                })
+        else:
+            self.err.append({
+                "device": self.id,
+                "type": "unknown_role",
+                "role": self.role
+            })
+
+        if policy["require_owner"] == True:
+            if self.owner == None:
+                self.err.append({
+                    "device": self.id,
+                    "type": "missing_owner"
+                })
+
+        downs = 0
+        for infs in self.interf:
+            if infs["satus" == "down"]:
+                downs += 1
+        if downs > policy["max_down_interfaces"]:
+            self.err.append({
+                "device": self.id,
+                "type": "too_many_down",
+                "down": downs
+            })
+        if not self.err:
+            self.compliant = True
 
 def main():
     """Main function to run everything"""
