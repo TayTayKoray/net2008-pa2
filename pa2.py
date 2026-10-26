@@ -46,10 +46,7 @@ def main():
 
 
     
-    #no bare excepts 
-    #yaml safe load
-    #minimum 5 commits 1/5 done
-    #one branch 1/1 branches - device class
+   
     #gitignore 0/1 added
     pass
 
