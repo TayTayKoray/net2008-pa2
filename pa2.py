@@ -30,6 +30,17 @@ class Device():
             })
         self.err = []
 
+    def pintcheck(self,poli):
+        """Function to ensure policy versions are compares correctly"""
+
+        devi = [int(oss) for oss in self.os.split(".")]
+        polish = [int(oss) for oss in poli.split(".")]
+        ml = max(len(devi), len(polish))
+        devi += [0] * (ml - len(devi))
+        polish += [0] * (ml - len(polish))
+
+        return devi < polish
+
     def polcheck(self, policy):
         """Checks if policy error in class"""
         min_o = policy.get("min_os") or {}
@@ -38,7 +49,7 @@ class Device():
         fw = min_o.get("firewall")
         
         if self.role == "switch":
-            if sw is not None and sw > self.os:
+            if  sw is not None and self.pintcheck(sw) == True :
                 self.err.append({
                     "device": self.id,
                     "type": "os_outdated",
@@ -46,7 +57,7 @@ class Device():
                     "required": sw
                     })
         elif self.role == "router":
-            if rt is not None and rt > self.os:
+            if rt is not None and self.pintcheck(rt) == True:
                 self.err.append({
                     "device": self.id,
                     "type": "os_outdated",
@@ -54,7 +65,7 @@ class Device():
                     "required": rt
                 })
         elif self.role == "firewall":
-            if fw is not None and fw > self.os:
+            if fw is not None and self.pintcheck(fw) == True:
                 self.err.append({
                     "device": self.id,
                     "type": "os_outdated",
