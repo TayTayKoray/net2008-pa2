@@ -36,9 +36,6 @@ class Device():
         sw = min_o.get("switch")
         rt = min_o.get("router")
         fw = min_o.get("firewall")
-
-        if self.id == None:
-            return
         
         if self.role == "switch":
             if sw is not None and sw > self.os:
