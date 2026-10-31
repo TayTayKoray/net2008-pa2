@@ -18,7 +18,7 @@ class Device():
         self.os = devs.get("os")
 
         owns = devs.find("owner")
-        if owns is not None:
+        if owns is not None and owns.text and owns.text.strip() != "":
             self.owner = owns.text.strip()
         else:
             self.owner = None
@@ -32,41 +32,46 @@ class Device():
 
     def polcheck(self, policy):
         """Checks if policy error in class"""
+        min_o = policy.get("min_os") or {}
+        sw = min_o.get("switch")
+        rt = min_o.get("router")
+        fw = min_o.get("firewall")
+
         if self.id == None:
             return
         
         if self.role == "switch":
-            if policy["switch"] != self.os:
+            if sw is not None and sw > self.os:
                 self.err.append({
                     "device": self.id,
                     "type": "os_outdated",
                     "found": self.os,
-                    "required": policy["switch"]
+                    "required": sw
                     })
         elif self.role == "router":
-            if policy["router"] != self.os:
+            if rt is not None and rt > self.os:
                 self.err.append({
                     "device": self.id,
                     "type": "os_outdated",
                     "found": self.os,
-                    "required": policy["router"]
+                    "required": rt
                 })
         elif self.role == "firewall":
-            if policy["firewall"] != self.os:
+            if fw is not None and fw > self.os:
                 self.err.append({
                     "device": self.id,
                     "type": "os_outdated",
                     "found": self.os,
-                    "required": policy["firewall"]
+                    "required": fw
                 })
-        else:
+        elif "min_os" in policy:
             self.err.append({
                 "device": self.id,
                 "type": "unknown_role",
                 "role": self.role
             })
 
-        if policy["require_owner"] == True:
+        if policy.get("require_owner") == True:
             if self.owner == None:
                 self.err.append({
                     "device": self.id,
@@ -74,15 +79,16 @@ class Device():
                 })
 
         downs = 0
-        for infs in self.interf:
-            if infs.get("satus") == "down":
+        for infs in self.intf:
+            if infs.get("status") == "down":
                 downs += 1
-        if downs > policy.get("max_down_interfaces"):
-            self.err.append({
-                "device": self.id,
-                "type": "too_many_down",
-                "down": downs
-            })
+        if "max_down_interfaces" in policy:
+            if downs > policy["max_down_interfaces"]:
+                self.err.append({
+                    "device": self.id,
+                    "type": "too_many_down",
+                    "down": downs
+                })
         if not self.err:
             self.compliant = True
 
@@ -90,34 +96,41 @@ def main():
     """Main function to run everything"""
 
     dev_di = {}
-    dev_ids = []
+    if len(sys.argv) != 3:
+        print("usage: arguments must equal 2, policy in yaml, devices in xml")
+        sys.exit(2)
     inventory_path = sys.argv[1]
     policy_path = sys.argv[2]
     try:
-        with open(inventory_path, "r", encoding = "utf-8") as f:
-            tree = ET.parse(f)
-            root = tree.getroot()
+        try:
+            with open(inventory_path, "r", encoding = "utf-8") as f:
+                tree = ET.parse(f)
+                root = tree.getroot()
 
-            for devs in root.findall("device"):
-                dev_id = devs.get("id")
-                if dev_id and dev_id.strip() != "":
-                    dev_ids.append(dev_id)
-                    dev_di[dev_id] = Device(devs)
-        raise BadFile(f"XML file")
-    except Exception as e:
-        print(f"Error with loading {e}")
+                for devs in root.findall("device"):
+                    dev_id = devs.get("id")
+                    if dev_id and dev_id.strip() != "":
+                        dev_di[dev_id] = Device(devs)
+        except Exception as e:
+            raise BadFile(f"Error with inventory using {inventory_path}")
+
+        try:
+            with open(policy_path, "r", encoding = "utf-8") as f:
+                policy = yaml.safe_load(f)
+                if policy is None:
+                    policy = {}
+                if not isinstance(policy, dict):
+                    raise BadFile(f"Policy error with {policy_path}")
+        except Exception as e:
+            raise BadFile(f"{e}")
+        
+    except BadFile as e:
+        print(f"{e}")
         sys.exit(1)
 
-    try:
-        with open(policy_path, "r", encoding = "utf-8") as f:
-            policy = yaml.safe_load()
-            for devo_s in dev_di:
-                devs.polcheck(policy)
-        raise BadFile(f"Yaml file")
-    except Exception as e:
-        print(f"Error with loading {e}")
-        sys.exit(1)
-  
+    for devo_s in dev_di.values():
+        devo_s.polcheck(policy)
+
     vios = []
     compl = []
     for devo_s in dev_di.values():
@@ -150,7 +163,7 @@ def main():
 
     audit = {
         "site": root.get("site"),
-        "total_decies": len(dev_di),
+        "total_devices": len(dev_di),
         "skipped_devices": skip_dev,
         "roles": rol_di,
         "interfaces": intrf_di,
@@ -160,6 +173,7 @@ def main():
 
     with open("audit.json", "w", encoding = "utf-8") as f:
         json.dump(audit, f, indent = 4)
+    print("Audit Complete")
 
 
 if __name__ == "__main__":
